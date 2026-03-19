@@ -31,7 +31,8 @@ workflow {
 
 output {
   r_results {
-    path 'results'
+    path '.'      // Publish to the root of the output directory (results/)
+    mode 'copy'   // Copy files (default)
   }
 }
 
