@@ -18,4 +18,4 @@ result <- data.frame(
   category  = category
 )
 
-write.csv(result, file = "result.csv", row.names = FALSE)
+write.csv(result, file = paste0(sample_id, "_bmi.csv"), row.names = FALSE)

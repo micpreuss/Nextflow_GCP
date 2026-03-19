@@ -10,7 +10,7 @@ process calc_bmi {
   path script
 
   output:
-  path 'result.csv'
+  path "${sample}_bmi.csv"
 
   script:
   """
