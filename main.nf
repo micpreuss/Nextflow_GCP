@@ -18,6 +18,24 @@ process calc_bmi {
   """
 }
 
+process merge_results {
+  container 'rocker/r-ver:4.4.0'
+
+  input:
+  path csv_files
+
+  output:
+  path 'bmi_summary.csv'
+
+  script:
+  '''
+  head -n 1 $(ls *.csv | head -1) > bmi_summary.csv
+  for f in *.csv; do
+    tail -n +2 "$f" >> bmi_summary.csv
+  done
+  '''
+}
+
 workflow {
   main:
   ch_samples = channel
@@ -26,8 +44,8 @@ workflow {
     .map { row -> tuple(row.sample, row.weight_kg, row.height_cm) } // Convert each CSV row into a tuple of (sample, weight_kg, height_cm)
 
   r_script = file("${projectDir}/scripts/calc_bmi.R")
-  ch_bmi = calc_bmi(ch_samples, r_script) // Call the calc_bmi process for each sample tuple (parallel), passing the R script as a parameter and collecting the resulting 'result.csv' files into ch_bmi 
-  ch_summary = ch_bmi.collectFile(name: 'bmi_summary.csv', keepHeader: true, skip: 1) // Collect all result.csv files into one summary, keeping the header from the first file and skipping it in subsequent files
+  ch_bmi = calc_bmi(ch_samples, r_script) // Call the calc_bmi process for each sample tuple (parallel), passing the R script as a parameter and collecting the resulting 'result.csv' files into ch_bmi
+  ch_summary = merge_results(ch_bmi.collect()) // Wait for all BMI results, then merge into one summary CSV on GCP (avoids GCS append limitation of collectFile)
 
   publish:
   bmi_results = ch_bmi
