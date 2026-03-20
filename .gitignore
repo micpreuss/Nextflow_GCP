@@ -3,3 +3,4 @@ results/
 .nextflow/
 .nextflow.log*
 .DS_Store
+nextflow.local.config
