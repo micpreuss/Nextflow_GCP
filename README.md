@@ -7,7 +7,6 @@ Small example Nextflow DSL2 pipeline for calculating BMI from a CSV samplesheet,
 The pipeline reads a samplesheet with `sample`, `weight_kg`, and `height_cm` columns, runs one BMI calculation per sample in parallel using an R script, and publishes:
 
 - `results/per_sample/*.csv`: one output file per sample
-- `results/per_sample/manifest.csv`: index of published per-sample files
 - `results/bmi_summary.csv`: combined summary table
 
 The main workflow lives in `main.nf`, and runtime profiles are defined in `nextflow.config`.
@@ -18,7 +17,6 @@ The main workflow lives in `main.nf`, and runtime profiles are defined in `nextf
 - `nextflow.config`: local and GCP execution settings
 - `data/samplesheet.csv`: example input
 - `scripts/calc_bmi.R`: per-sample BMI calculation
-- `scripts/hello.R`: unused helper/example script
 
 Generated run artifacts such as `work/`, `results/`, `.nextflow/`, and `.nextflow.log*` are intentionally ignored by Git.
 
@@ -66,57 +64,77 @@ Local runs use:
 
 ## Run On GCP
 
-The `gcp` profile is configured for Google Batch and Docker:
+The `gcp` profile is configured for Google Batch and Docker. Run the pipeline directly from GitHub:
 
 ```bash
-nextflow run main.nf -profile gcp
+nextflow run micpreuss/Nextflow_GCP -profile gcp
 ```
 
-The committed defaults are designed for shared use within one project group:
+To pull the latest version before running:
+
+```bash
+nextflow run micpreuss/Nextflow_GCP -profile gcp -latest
+```
+
+To resume a failed or interrupted run (reuses cached results from completed tasks):
+
+```bash
+nextflow run micpreuss/Nextflow_GCP -profile gcp -latest -resume
+```
+
+### Prerequisites
+
+The GCS bucket must exist before running the pipeline (one-time setup):
+
+```bash
+gcloud storage buckets create gs://northwell-nextflow --project=lencz-lab-cogent-1 --location=us-central1
+```
+
+### GCP Defaults
 
 - Google project: `lencz-lab-cogent-1`
-- Region: `us-east1`
+- Region: `us-central1`
 - Shared bucket root: `gs://northwell-nextflow`
 - Project slug: `nextflow-gcp`
 - Work directory pattern: `gs://northwell-nextflow/nextflow-gcp/work/$USER`
-- Output directory pattern: `gs://northwell-nextflow/nextflow-gcp/results/$USER/<runName>`
+- Output directory pattern: `gs://northwell-nextflow/nextflow-gcp/results/$USER`
 
 This keeps cached work isolated by user while still steering everyone in the group toward a common bucket layout.
+
+### Viewing Results on GCS
+
+List your published results:
+
+```bash
+gcloud storage ls gs://northwell-nextflow/nextflow-gcp/results/<your-username>/
+```
+
+Quick-peek at a file without downloading:
+
+```bash
+gcloud storage cat gs://northwell-nextflow/nextflow-gcp/results/<your-username>/bmi_summary.csv
+```
+
+Replace `<your-username>` with your system username (the value of `$USER`).
+
+### Overrides
 
 Override the shared bucket at runtime if needed:
 
 ```bash
-nextflow run main.nf -profile gcp --gcp_bucket gs://my-team-bucket
-```
-
-You can also create an untracked `nextflow.local.config` for personal overrides. The repository will load it automatically if present.
-
-Example:
-
-```groovy
-params {
-  gcp_bucket = 'gs://my-team-bucket'
-  user = 'alice'
-}
-
-google {
-  project = 'my-gcp-project'
-  location = 'us-central1'
-}
+nextflow run micpreuss/Nextflow_GCP -profile gcp --gcp_bucket gs://my-team-bucket
 ```
 
 ## How It Works
 
 1. `main.nf` reads the samplesheet from `params.samplesheet`
 2. Each CSV row is converted into a tuple of sample metadata
-3. The `calc_bmi` process runs `scripts/calc_bmi.R` once per sample
-4. Per-sample CSV outputs are collected into a single `bmi_summary.csv`
+3. The `calc_bmi` process runs `scripts/calc_bmi.R` once per sample (in parallel)
+4. The `merge_results` process concatenates all per-sample CSVs into `bmi_summary.csv`
 5. Results are published through the centralized `output {}` block
 
 ## Notes For Contributors
 
 - Most of the project logic is concentrated in `main.nf`
 - The pipeline is currently more of a compact example than a production-ready workflow
-- `scripts/hello.R` is not referenced by the workflow
 - The existing `results/` and `work/` directories are runtime artifacts from prior executions
-- Personal config belongs in `nextflow.local.config`, which is ignored by Git
