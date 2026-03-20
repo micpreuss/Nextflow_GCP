@@ -19,7 +19,7 @@ process calc_bmi {
 }
 
 process merge_results {
-  container 'rocker/r-ver:4.4.0'
+  container 'rocker/r-ver:4.4.0' // Use the same R image for consistency, even though this process is just shell commands
 
   input:
   path csv_files
