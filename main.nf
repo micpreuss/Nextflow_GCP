@@ -56,9 +56,6 @@ output {
   bmi_results {
     path 'per_sample'
     mode 'copy'
-    index {
-      path 'per_sample/manifest.csv'
-    }
   }
   bmi_summary {
     path '.'
